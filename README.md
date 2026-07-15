@@ -114,7 +114,7 @@
 
 `openid_env` 是对应的 GitHub Secret 名称，通常无需修改。没有设置对应 OpenID 的收件人会自动跳过，所以不需要删除第二个人的配置。
 
-鼓励语在 [`love_push/compose.py`](love_push/compose.py) 的 `MORNING_WORDS` 和 `EVENING_WORDS` 中，可以直接替换为你们之间更有意义的话。项目保留原来的彩色 Emoji；根据安卓实机测试，地点使用兼容性更好的彩色地球 `🌏`，天气标题使用 `☁️`。
+鼓励语在 [`love_push/compose.py`](love_push/compose.py) 的 `MORNING_WORDS` 和 `EVENING_WORDS` 中，早晚各准备了 30 条；活动建议在 [`love_push/weather.py`](love_push/weather.py) 中按雨雪、高温、低温、大风、晴天和早晚时段分类。两类文案都会按日期和收件人稳定轮换，同一天重新运行不会反复变化，也可以直接替换为你们之间更有意义的话。项目保留原来的彩色 Emoji；根据安卓实机测试，地点使用兼容性更好的彩色地球 `🌏`，天气标题使用 `☁️`。
 
 ## 本地预览与测试（可选）
 

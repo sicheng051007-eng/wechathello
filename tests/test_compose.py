@@ -1,7 +1,13 @@
 import unittest
 from datetime import datetime
 
-from love_push.compose import compose_card_summary, compose_message, render_preview
+from love_push.compose import (
+    EVENING_WORDS,
+    MORNING_WORDS,
+    compose_card_summary,
+    compose_message,
+    render_preview,
+)
 from love_push.models import Location, Recipient, WeatherSnapshot
 
 
@@ -36,6 +42,17 @@ class ComposeTests(unittest.TestCase):
         first = compose_message(self.recipient, self.weather, "morning", self.now)
         second = compose_message(self.recipient, self.weather, "morning", self.now)
         self.assertEqual(first.fields["encouragement"], second.fields["encouragement"])
+
+    def test_has_a_month_of_morning_and_evening_words(self) -> None:
+        self.assertGreaterEqual(len(MORNING_WORDS), 30)
+        self.assertGreaterEqual(len(EVENING_WORDS), 30)
+        self.assertEqual(len(MORNING_WORDS), len(set(MORNING_WORDS)))
+        self.assertEqual(len(EVENING_WORDS), len(set(EVENING_WORDS)))
+
+    def test_daily_activity_is_deterministic(self) -> None:
+        first = compose_message(self.recipient, self.weather, "morning", self.now)
+        second = compose_message(self.recipient, self.weather, "morning", self.now)
+        self.assertEqual(first.fields["activity"], second.fields["activity"])
 
     def test_weather_failure_still_renders_complete_message(self) -> None:
         message = compose_message(self.recipient, None, "evening", self.now)

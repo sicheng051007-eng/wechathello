@@ -1,7 +1,12 @@
 import unittest
 
 from love_push.models import Location, WeatherSnapshot
-from love_push.weather import OpenMeteoWeather, WeatherDataError, activity_suggestion
+from love_push.weather import (
+    OpenMeteoWeather,
+    WeatherDataError,
+    activity_suggestion,
+    activity_suggestions,
+)
 
 
 class FakeHttp:
@@ -59,6 +64,15 @@ class WeatherTests(unittest.TestCase):
         advice = activity_suggestion(weather, "evening")
         self.assertIn("高温辛苦了", advice)
         self.assertNotIn("午后", advice)
+
+    def test_each_common_weather_period_has_multiple_activity_options(self) -> None:
+        fair = WeatherSnapshot(1, 22, 22, 50, 5, 18, 26, 5, 3)
+        rainy = WeatherSnapshot(63, 20, 20, 80, 5, 18, 22, 90, 2)
+        for weather in (fair, rainy):
+            for period in ("morning", "evening"):
+                options = activity_suggestions(weather, period)
+                self.assertGreaterEqual(len(options), 4)
+                self.assertEqual(len(options), len(set(options)))
 
 
 if __name__ == "__main__":
