@@ -96,7 +96,7 @@ def render_preview(message: TemplateMessage) -> str:
             fields["greeting"],
             "",
             f"📅 {fields['date']}",
-            f"🏫 {fields['location']}",
+            f"🌏 {fields['location']}",
             f"☁️ {fields['weather']}",
             f"🌡️ {fields['temperature']}",
             f"💡 {fields['activity']}",
