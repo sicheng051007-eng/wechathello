@@ -76,7 +76,7 @@ def _message_html(message: TemplateMessage) -> str:
       <h1>{value['greeting']}</h1>
       <div class="meta">
         <span class="pill">📅 {value['date']}</span>
-        <span class="pill">🏫 {value['location']}</span>
+        <span class="pill">🌏 {value['location']}</span>
       </div>
     </section>
     <section class="grid">

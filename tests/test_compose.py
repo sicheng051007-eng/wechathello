@@ -46,9 +46,10 @@ class ComposeTests(unittest.TestCase):
     def test_preview_uses_replacement_location_and_weather_emoji(self) -> None:
         message = compose_message(self.recipient, self.weather, "morning", self.now)
         preview = render_preview(message)
-        self.assertIn("🏫 清华园 · 北京", preview)
+        self.assertIn("🌏 清华园 · 北京", preview)
         self.assertIn("☁️ 大致晴朗", preview)
         self.assertNotIn("📍", preview)
+        self.assertNotIn("🏫", preview)
         self.assertNotIn("🌤️ 大致晴朗", preview)
 
     def test_card_summary_is_short_and_links_to_full_page(self) -> None:
