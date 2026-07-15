@@ -1,0 +1,72 @@
+name: 每日微信推送
+
+on:
+  schedule:
+    - cron: "5 8 * * *"
+      timezone: "Asia/Shanghai"
+    - cron: "5 18 * * *"
+      timezone: "Asia/Shanghai"
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 消息时段
+        required: true
+        default: morning
+        type: choice
+        options:
+          - morning
+          - evening
+      dry_run:
+        description: 只在日志预览，不发送微信
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qingzhe-daily-push
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 获取代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 运行单元测试
+        run: python -m unittest discover -s tests -v
+
+      - name: 判断早晚时段
+        id: period
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "value=${{ inputs.period }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event.schedule }}" == "5 8 * * *" ]]; then
+            echo "value=morning" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=evening" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 预览消息
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: python -m love_push --period "${{ steps.period.outputs.value }}" --dry-run
+
+      - name: 发送微信消息
+        if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+        env:
+          WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
+          WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
+          WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
+          WECHAT_OPENID_GIRLFRIEND: ${{ secrets.WECHAT_OPENID_GIRLFRIEND }}
+          WECHAT_OPENID_BOYFRIEND: ${{ secrets.WECHAT_OPENID_BOYFRIEND }}
+        run: python -m love_push --period "${{ steps.period.outputs.value }}"
