@@ -11,13 +11,34 @@ from love_push.models import TemplateMessage
 TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token"
 SEND_URL = "https://api.weixin.qq.com/cgi-bin/message/template/send"
 
-# 微信模板消息会过滤 Emoji，部分安卓客户端会显示为方框。发送前统一移除，
-# 同时覆盖用户以后在自定义称呼或落款中误加 Emoji 的情况。
-EMOJI_PATTERN = re.compile(
+# 微信模板消息中的彩色 Emoji 在部分安卓客户端会显示为方框。发送前先把常用
+# Emoji 降级成两端都更容易显示的基础 Unicode 图案，再移除无法安全降级的字符。
+EMOJI_FALLBACKS = (
+    ("❤️", "♥"),
+    ("❤", "♥"),
+    ("💗", "♥"),
+    ("💕", "♥"),
+    ("💖", "♥"),
+    ("💓", "♥"),
+    ("💞", "♥"),
+    ("☀️", "☀"),
+    ("🌞", "☀"),
+    ("🌤️", "☀"),
+    ("🌧️", "☂"),
+    ("☔", "☂"),
+    ("🌙", "☾"),
+    ("😊", "☺"),
+    ("🙂", "☺"),
+    ("✨", "★"),
+    ("⭐", "★"),
+    ("❄️", "❄"),
+    ("⚡️", "⚡"),
+    ("💪", "加油"),
+)
+UNSUPPORTED_EMOJI_PATTERN = re.compile(
     "["
     "\U0001F1E6-\U0001F1FF"
     "\U0001F300-\U0001FAFF"
-    "\u2600-\u27BF"
     "\uFE0E\uFE0F\u200D"
     "]+"
 )
@@ -70,5 +91,7 @@ class WeChatClient:
 
 
 def sanitize_wechat_text(value: str) -> str:
-    """移除模板消息不支持的 Emoji，并清理多余空白。"""
-    return " ".join(EMOJI_PATTERN.sub("", value).split())
+    """将彩色 Emoji 降级成安卓兼容图案，并清理无法兼容的字符。"""
+    for emoji, fallback in EMOJI_FALLBACKS:
+        value = value.replace(emoji, fallback)
+    return " ".join(UNSUPPORTED_EMOJI_PATTERN.sub("", value).split())

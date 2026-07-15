@@ -50,18 +50,18 @@ def compose_message(
         raise ValueError("period 必须是 morning 或 evening")
 
     greeting = (
-        f"早安呀，{recipient.name}！今天也一起加油 (^_^)"
+        f"早安呀，{recipient.name}！今天也一起加油 ☀"
         if period == "morning"
-        else f"晚上好，{recipient.name}！今天辛苦啦 (^_^)"
+        else f"晚上好，{recipient.name}！今天辛苦啦 ☾"
     )
     date_text = f"{now:%Y年%m月%d日} · 星期{WEEKDAYS[now.weekday()]}"
     words = MORNING_WORDS if period == "morning" else EVENING_WORDS
     encouragement = _daily_choice(words, now, recipient.id, period)
 
     if weather is None:
-        weather_line = "天气暂时走丢了，但关心没有掉线"
+        weather_line = "☁ 天气暂时走丢了，但关心没有掉线"
         temperature_line = "气温数据稍后再来，请按体感及时增减衣物"
-        activity_line = "适合照顾好自己，也适合随时给我发消息"
+        activity_line = "♥ 适合照顾好自己，也适合随时给我发消息"
     else:
         weather_line = (
             f"{weather_text(weather.weather_code)}｜降雨 {weather.precipitation_probability}%"

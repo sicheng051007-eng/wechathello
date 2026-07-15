@@ -8,7 +8,7 @@ from love_push.models import Location, Recipient, WeatherSnapshot
 class ComposeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.recipient = Recipient(
-            "her", "宝贝", "openid", Location("清华园 · 北京", 40, 116.3), "想你 <3"
+            "her", "宝贝", "openid", Location("清华园 · 北京", 40, 116.3), "想你 ♥"
         )
         self.weather = WeatherSnapshot(1, 26.3, 27.1, 71, 8.2, 23.4, 31.2, 20, 7.1)
         self.now = datetime(2026, 7, 15, 8, 5)
@@ -47,6 +47,12 @@ class ComposeTests(unittest.TestCase):
         message = compose_message(self.recipient, self.weather, "morning", self.now)
         values = [field["value"] for field in message.fields.values()]
         self.assertFalse(any(ord(char) > 0xFFFF for value in values for char in value))
+
+    def test_message_contains_android_compatible_symbols(self) -> None:
+        message = compose_message(self.recipient, self.weather, "morning", self.now)
+        values = " ".join(field["value"] for field in message.fields.values())
+        self.assertIn("☀", values)
+        self.assertIn("♥", values)
 
 
 if __name__ == "__main__":

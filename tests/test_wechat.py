@@ -31,17 +31,21 @@ class WeChatTests(unittest.TestCase):
         self.assertEqual(msgid, "42")
         self.assertEqual(http.posted["touser"], "openid")
 
-    def test_send_template_removes_unsupported_emoji(self) -> None:
+    def test_send_template_replaces_unsupported_emoji(self) -> None:
         http = FakeHttp(post_response={"errcode": 0, "errmsg": "ok", "msgid": 42})
         client = WeChatClient("app", "secret", http)
         message = TemplateMessage(
-            {"greeting": {"value": "早安 ☀️ 加油 💗", "color": "#000000"}}
+            {"greeting": {"value": "早安 ☀️ 加油 💗 😊", "color": "#000000"}}
         )
         client.send_template("token", "openid", "template", message)
-        self.assertEqual(http.posted["data"]["greeting"]["value"], "早安 加油")
+        self.assertEqual(http.posted["data"]["greeting"]["value"], "早安 ☀ 加油 ♥ ☺")
 
-    def test_text_emoticon_is_preserved(self) -> None:
-        self.assertEqual(sanitize_wechat_text("加油 (^_^) <3"), "加油 (^_^) <3")
+    def test_android_compatible_symbols_are_preserved(self) -> None:
+        symbols = "☀ ☁ ☂ ☺ ♥ ★ ☾ ❄ ⚡"
+        self.assertEqual(sanitize_wechat_text(symbols), symbols)
+
+    def test_unknown_high_plane_emoji_is_removed(self) -> None:
+        self.assertEqual(sanitize_wechat_text("一起写代码 🧑‍💻"), "一起写代码")
 
     def test_api_error_is_exposed(self) -> None:
         client = WeChatClient(
