@@ -21,6 +21,11 @@ on:
         required: true
         default: false
         type: boolean
+      deploy_only:
+        description: 只部署完整内容页，不发送微信
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -95,7 +100,9 @@ jobs:
         uses: actions/deploy-pages@v4
 
   send:
-    if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (!inputs.dry_run && !inputs.deploy_only)
     needs:
       - prepare
       - deploy
