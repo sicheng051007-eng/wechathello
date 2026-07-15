@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime
 
 from love_push.models import Recipient, TemplateMessage, WeatherSnapshot
@@ -107,6 +108,58 @@ def render_preview(message: TemplateMessage) -> str:
     )
 
 
+def compose_card_summary(
+    recipient: Recipient,
+    weather: WeatherSnapshot | None,
+    period: str,
+    full_message: TemplateMessage,
+    url: str,
+) -> TemplateMessage:
+    """生成适合微信卡片首屏展示的短摘要，完整内容保留在详情页。"""
+    fields = {
+        name: dict(item)
+        for name, item in full_message.fields.items()
+    }
+    fields["greeting"]["value"] = _short_text(
+        (
+            f"早安，{recipient.name} ☀️"
+            if period == "morning"
+            else f"晚安，{recipient.name} 🌙"
+        ),
+        16,
+    )
+    fields["date"]["value"] = re.sub(
+        r"^\d{4}年(\d{2}月\d{2}日) · 星期(.)$",
+        r"\1 周\2",
+        fields["date"]["value"],
+    )
+    fields["location"]["value"] = _short_text(recipient.location.name, 14)
+
+    if weather is None:
+        fields["weather"]["value"] = "天气稍后再来｜先照顾好自己"
+        fields["temperature"]["value"] = "按体感增减衣物"
+    else:
+        condition = weather_text(weather.weather_code).split("｜", 1)[0]
+        fields["weather"]["value"] = (
+            f"{condition}｜{weather.current_temperature:.0f}℃"
+            f"｜雨{weather.precipitation_probability}%"
+        )
+        fields["temperature"]["value"] = (
+            f"{weather.current_temperature:.0f}℃｜体感"
+            f"{weather.apparent_temperature:.0f}℃"
+        )
+
+    fields["activity"]["value"] = _first_clause(
+        full_message.fields["activity"]["value"], 16
+    )
+    fields["encouragement"]["value"] = _first_clause(
+        full_message.fields["encouragement"]["value"], 18
+    )
+    fields["closing"]["value"] = _first_clause(recipient.signoff, 16)
+    fields["source"]["value"] = "点击查看完整内容"
+    return TemplateMessage(fields=fields, url=url)
+
+
 def _daily_choice(words: tuple[str, ...], now: datetime, recipient_id: str, period: str) -> str:
     seed = f"{now.date().isoformat()}|{recipient_id}|{period}".encode("utf-8")
     index = int.from_bytes(hashlib.sha256(seed).digest()[:4], "big") % len(words)
@@ -115,3 +168,12 @@ def _daily_choice(words: tuple[str, ...], now: datetime, recipient_id: str, peri
 
 def _field(value: str, color: str) -> dict[str, str]:
     return {"value": value, "color": color}
+
+
+def _first_clause(value: str, max_length: int) -> str:
+    clause = re.split(r"[，。！？；\n]", value.strip(), maxsplit=1)[0].strip()
+    return _short_text(clause or value, max_length)
+
+
+def _short_text(value: str, max_length: int) -> str:
+    return value.strip()[:max_length].rstrip()

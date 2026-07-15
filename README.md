@@ -1,6 +1,6 @@
 # 清浙小报 💗
 
-给异地恋人的微信天气与鼓励定时推送。默认在**北京时间每天 08:05 和 18:05**，分别把收件人所在校园的天气、气温、活动建议和一句温柔鼓励发送到微信。
+给异地恋人的微信天气与鼓励定时推送。默认在**北京时间每天 08:05 和 18:05**发送一张精简微信卡片；点击卡片可以查看完整天气、气温、活动建议和温柔鼓励。
 
 项目已预置两个地点：
 
@@ -12,20 +12,17 @@
 ## 消息效果
 
 ```text
-早安呀，宝贝！今天也一起加油 ☀️
+早安，宝贝 ☀️
+📅 07月15日 周三｜🏫 清华园 · 北京
+☁️ 晴朗 ☀️｜31℃｜雨0%
+💡 天气适合出门
+💌 愿你今天遇到的题都有思路
+来自浙大的牵挂
 
-📅 2026年07月15日 · 星期三
-🏫 清华园 · 北京
-☁️ 晴朗 ☀️｜降雨 0%｜湿度 52%
-🌡️ 现在 31.5℃（体感 36.9℃）｜今日 23～34℃
-💡 天气适合出门，午间紫外线偏强，记得防晒补水 🧴
-
-💌 愿你今天遇到的题都有思路，走过的路都有好风景。
-来自浙大的牵挂，隔着山海也一直想你 💗
-☁️ 天气数据：Open-Meteo
+👉 点击卡片查看完整内容
 ```
 
-早晚使用不同的问候、活动建议和鼓励语。文案从项目内置的精选句子中按日期稳定轮换，不依赖质量不稳定的“情话接口”。
+卡片字段会自动缩短，避免安卓微信显示省略号；完整内容由 GitHub Actions 生成手机网页并部署到 GitHub Pages。早晚使用不同的问候、活动建议和鼓励语，文案按日期稳定轮换。
 
 ## 为什么这样实现
 
@@ -53,23 +50,20 @@
 
 ```text
 {{greeting.DATA}}
-
-📅 {{date.DATA}}
-🏫 {{location.DATA}}
+📅 {{date.DATA}}｜🏫 {{location.DATA}}
 ☁️ {{weather.DATA}}
-🌡️ {{temperature.DATA}}
 💡 {{activity.DATA}}
-
 💌 {{encouragement.DATA}}
 {{closing.DATA}}
-☁️ {{source.DATA}}
+
+👉 点击卡片查看完整内容
 ```
 
 保存后记下生成的模板 ID。
 
 ### 3. 放到 GitHub
 
-1. 在 GitHub 新建一个**私有仓库**。
+1. 在 GitHub 新建仓库。GitHub 免费账户使用 Pages 时请保持仓库为**公开仓库**。
 2. 把本项目的全部文件上传并提交到默认分支（通常是 `main`）。
 3. 打开仓库的 `Settings` → `Secrets and variables` → `Actions`。
 4. 逐个新建以下 Repository secrets：
@@ -84,13 +78,15 @@
 
 所有凭据都只放在 GitHub Secrets 中，不要把它们写进代码或截图发给别人。
 
+然后打开 `Settings` → `Pages`，在 `Build and deployment` 的 `Source` 中选择 **GitHub Actions**。这是点击卡片查看完整内容所需的一次性设置。
+
 ### 4. 第一次手动测试
 
 1. 打开仓库的 `Actions` 页面。
 2. 左侧选择“每日微信推送”。
 3. 点击 `Run workflow`。
 4. `period` 选 `morning`，`dry_run` 保持 `false`，然后运行。
-5. 任务显示绿色成功，微信通常会很快收到一条模板消息。
+5. 工作流会先部署完整内容页，再发送带链接的精简卡片；全部任务显示绿色后，点击微信卡片即可查看全文。
 
 如果只想先看排版、不实际发送，把 `dry_run` 改成 `true`，消息预览会出现在运行日志里，且不要求配置任何微信 Secret。
 
@@ -127,6 +123,9 @@
 python -m love_push --period morning --dry-run
 python -m love_push --period evening --dry-run
 
+# 预览精简卡片（示例地址只用于预览）
+python -m love_push --period morning --dry-run --page-base-url https://example.com/
+
 # 运行全部测试
 python -m unittest discover -s tests -v
 ```
@@ -139,6 +138,7 @@ python -m unittest discover -s tests -v
 - 一个收件人发送失败，不会阻止另一个收件人的消息；任务最后会标红，方便从 Actions 日志排查。
 - 同一地点只请求一次天气，避免不必要的 API 调用。
 - 微信 appsecret、OpenID 和模板 ID 不进入仓库、不打印到日志。
+- 详情页地址使用不可读的散列路径，页面声明禁止搜索引擎收录，且绝不会写入 OpenID；但免费 GitHub Pages 本质上仍是公开网页，不要在文案中放身份证号、电话等敏感信息。
 - 微信消息发送请求不盲目重试，避免服务器已收到消息但响应丢失时造成重复推送。
 - 每次推送前会自动运行单元测试，代码异常时停止发送。
 
@@ -150,7 +150,7 @@ python -m unittest discover -s tests -v
 
 ### 微信返回 `40037 invalid template_id`
 
-确认 `WECHAT_TEMPLATE_ID` 来自当前测试号，且模板内容中的 9 个字段名与本文完全一致。
+确认 `WECHAT_TEMPLATE_ID` 来自当前测试号，且模板内容中的字段名与本文完全一致。
 
 ### 微信返回 `40125 invalid appsecret`
 
@@ -176,6 +176,7 @@ python -m unittest discover -s tests -v
 │   ├── cli.py               # 命令行入口
 │   ├── compose.py           # 排版与鼓励语
 │   ├── config.py            # 安全读取收件人配置
+│   ├── details.py           # 生成手机端完整内容页
 │   ├── http.py              # 带超时的 JSON 请求
 │   ├── service.py           # 推送编排与故障降级
 │   ├── weather.py           # 天气解析与活动建议

@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
-from love_push.compose import compose_message, render_preview
-from love_push.models import Recipient, WeatherSnapshot
+from love_push.compose import compose_card_summary, compose_message, render_preview
+from love_push.details import detail_page_url, write_detail_site
+from love_push.models import Recipient, TemplateMessage, WeatherSnapshot
 from love_push.weather import OpenMeteoWeather
 from love_push.wechat import WeChatClient
 
@@ -29,6 +31,9 @@ def run_push(
     wechat_client: WeChatClient | None = None,
     template_id: str = "",
     dry_run: bool = False,
+    preview: bool = True,
+    site_dir: str | Path | None = None,
+    page_base_url: str = "",
 ) -> PushSummary:
     token = ""
     if not dry_run:
@@ -37,6 +42,7 @@ def run_push(
         token = wechat_client.get_access_token()
 
     sent = failed = degraded = 0
+    detail_pages: list[tuple[Recipient, TemplateMessage]] = []
     weather_cache: dict[tuple[float, float, str], WeatherSnapshot | None] = {}
     for recipient in recipients:
         cache_key = (
@@ -54,17 +60,37 @@ def run_push(
         if weather is None:
             degraded += 1
         message = compose_message(recipient, weather, period, now)
+        detail_pages.append((recipient, message))
 
         if dry_run:
-            print(f"\n===== {recipient.id} / {recipient.name} =====")
-            print(render_preview(message))
+            if preview:
+                preview_message = message
+                if page_base_url:
+                    preview_message = compose_card_summary(
+                        recipient,
+                        weather,
+                        period,
+                        message,
+                        detail_page_url(page_base_url, recipient.id),
+                    )
+                print(f"\n===== {recipient.id} / {recipient.name} =====")
+                print(render_preview(preview_message))
             sent += 1
             continue
 
         try:
             assert wechat_client is not None
+            send_message = message
+            if page_base_url:
+                send_message = compose_card_summary(
+                    recipient,
+                    weather,
+                    period,
+                    message,
+                    detail_page_url(page_base_url, recipient.id),
+                )
             msgid = wechat_client.send_template(
-                token, recipient.openid, template_id, message
+                token, recipient.openid, template_id, send_message
             )
             LOGGER.info("已向 %s 发送成功，msgid=%s", recipient.id, msgid or "(无)")
             sent += 1
@@ -73,5 +99,8 @@ def run_push(
             LOGGER.error("向 %s 发送失败：%s", recipient.id, exc)
             failed += 1
 
-    return PushSummary(sent=sent, failed=failed, degraded_weather=degraded)
+    if site_dir is not None:
+        write_detail_site(site_dir, detail_pages)
+        LOGGER.info("完整内容页已生成到 %s", site_dir)
 
+    return PushSummary(sent=sent, failed=failed, degraded_weather=degraded)

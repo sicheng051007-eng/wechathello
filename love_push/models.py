@@ -37,11 +37,14 @@ class WeatherSnapshot:
 @dataclass(frozen=True, slots=True)
 class TemplateMessage:
     fields: dict[str, dict[str, str]]
+    url: str | None = None
 
     def as_payload(self, openid: str, template_id: str) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "touser": openid,
             "template_id": template_id,
             "data": self.fields,
         }
-
+        if self.url:
+            payload["url"] = self.url
+        return payload

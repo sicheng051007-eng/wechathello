@@ -40,6 +40,16 @@ class WeChatTests(unittest.TestCase):
         client.send_template("token", "openid", "template", message)
         self.assertEqual(http.posted["data"]["greeting"]["value"], "早安 ☀️ 加油 💗")
 
+    def test_send_template_includes_detail_url(self) -> None:
+        http = FakeHttp(post_response={"errcode": 0, "errmsg": "ok", "msgid": 42})
+        client = WeChatClient("app", "secret", http)
+        message = TemplateMessage(
+            {"greeting": {"value": "早安", "color": "#000000"}},
+            url="https://example.com/message/",
+        )
+        client.send_template("token", "openid", "template", message)
+        self.assertEqual(http.posted["url"], "https://example.com/message/")
+
     def test_api_error_is_exposed(self) -> None:
         client = WeChatClient(
             "app", "secret", FakeHttp(post_response={"errcode": 40003, "errmsg": "bad openid"})

@@ -17,28 +17,32 @@ on:
           - morning
           - evening
       dry_run:
-        description: 只在日志预览，不发送微信
+        description: 只在日志预览，不部署网页也不发送微信
         required: true
         default: false
         type: boolean
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: qingzhe-daily-push
   cancel-in-progress: false
 
 jobs:
-  push:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      period: ${{ steps.period.outputs.value }}
     steps:
       - name: 获取代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 配置 Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -61,12 +65,59 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run
         run: python -m love_push --period "${{ steps.period.outputs.value }}" --dry-run
 
-      - name: 发送微信消息
+      - name: 配置 GitHub Pages
         if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+        uses: actions/configure-pages@v5
+
+      - name: 生成完整内容页
+        if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+        run: python -m love_push --period "${{ steps.period.outputs.value }}" --site-only --site-dir site
+
+      - name: 上传完整内容页
+        if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署完整内容页
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  send:
+    if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+    needs:
+      - prepare
+      - deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 获取代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: 发送精简卡片
         env:
           WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
           WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
           WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
           WECHAT_OPENID_GIRLFRIEND: ${{ secrets.WECHAT_OPENID_GIRLFRIEND }}
           WECHAT_OPENID_BOYFRIEND: ${{ secrets.WECHAT_OPENID_BOYFRIEND }}
-        run: python -m love_push --period "${{ steps.period.outputs.value }}"
+        run: >-
+          python -m love_push
+          --period "${{ needs.prepare.outputs.period }}"
+          --page-base-url "${{ needs.deploy.outputs.page_url }}"

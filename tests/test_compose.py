@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime
 
-from love_push.compose import compose_message, render_preview
+from love_push.compose import compose_card_summary, compose_message, render_preview
 from love_push.models import Location, Recipient, WeatherSnapshot
 
 
@@ -50,6 +50,22 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("☁️ 大致晴朗", preview)
         self.assertNotIn("📍", preview)
         self.assertNotIn("🌤️ 大致晴朗", preview)
+
+    def test_card_summary_is_short_and_links_to_full_page(self) -> None:
+        full = compose_message(self.recipient, self.weather, "morning", self.now)
+        summary = compose_card_summary(
+            self.recipient,
+            self.weather,
+            "morning",
+            full,
+            "https://example.com/message/",
+        )
+        self.assertEqual(summary.url, "https://example.com/message/")
+        self.assertIn("26℃", summary.fields["weather"]["value"])
+        self.assertLessEqual(len(summary.fields["activity"]["value"]), 16)
+        self.assertLessEqual(len(summary.fields["encouragement"]["value"]), 18)
+        self.assertLessEqual(len(summary.fields["closing"]["value"]), 16)
+        self.assertNotIn("…", "".join(item["value"] for item in summary.fields.values()))
 
 
 if __name__ == "__main__":
