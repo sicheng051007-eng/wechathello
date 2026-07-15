@@ -1,0 +1,28 @@
+{
+  "recipients": [
+    {
+      "id": "girlfriend",
+      "name": "宝贝",
+      "openid_env": "WECHAT_OPENID_GIRLFRIEND",
+      "location": {
+        "name": "清华园 · 北京",
+        "latitude": 40.0005,
+        "longitude": 116.3268,
+        "timezone": "Asia/Shanghai"
+      },
+      "signoff": "来自浙大的牵挂，隔着山海也一直想你 💗"
+    },
+    {
+      "id": "boyfriend",
+      "name": "同学",
+      "openid_env": "WECHAT_OPENID_BOYFRIEND",
+      "location": {
+        "name": "浙大紫金港 · 杭州",
+        "latitude": 30.3087,
+        "longitude": 120.0865,
+        "timezone": "Asia/Shanghai"
+      },
+      "signoff": "来自清华园的惦记，今天也要照顾好自己 💗"
+    }
+  ]
+}
