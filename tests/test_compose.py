@@ -8,7 +8,7 @@ from love_push.models import Location, Recipient, WeatherSnapshot
 class ComposeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.recipient = Recipient(
-            "her", "宝贝", "openid", Location("清华园 · 北京", 40, 116.3), "想你 ♥"
+            "her", "宝贝", "openid", Location("清华园 · 北京", 40, 116.3), "想你 💗"
         )
         self.weather = WeatherSnapshot(1, 26.3, 27.1, 71, 8.2, 23.4, 31.2, 20, 7.1)
         self.now = datetime(2026, 7, 15, 8, 5)
@@ -43,16 +43,13 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("天气暂时走丢了", preview)
         self.assertIn("想你", preview)
 
-    def test_template_values_do_not_contain_four_byte_emoji(self) -> None:
+    def test_preview_uses_replacement_location_and_weather_emoji(self) -> None:
         message = compose_message(self.recipient, self.weather, "morning", self.now)
-        values = [field["value"] for field in message.fields.values()]
-        self.assertFalse(any(ord(char) > 0xFFFF for value in values for char in value))
-
-    def test_message_contains_android_compatible_symbols(self) -> None:
-        message = compose_message(self.recipient, self.weather, "morning", self.now)
-        values = " ".join(field["value"] for field in message.fields.values())
-        self.assertIn("☀", values)
-        self.assertIn("♥", values)
+        preview = render_preview(message)
+        self.assertIn("🏫 清华园 · 北京", preview)
+        self.assertIn("☁️ 大致晴朗", preview)
+        self.assertNotIn("📍", preview)
+        self.assertNotIn("🌤️ 大致晴朗", preview)
 
 
 if __name__ == "__main__":

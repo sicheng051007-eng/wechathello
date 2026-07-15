@@ -71,7 +71,7 @@ def load_recipients(
                     timezone=str(location_data.get("timezone", "Asia/Shanghai")).strip()
                     or "Asia/Shanghai",
                 ),
-                signoff=str(item.get("signoff", "隔着山海，也一直惦记你 ♥")).strip(),
+                signoff=str(item.get("signoff", "隔着山海，也一直惦记你 💗")).strip(),
             )
         )
 
