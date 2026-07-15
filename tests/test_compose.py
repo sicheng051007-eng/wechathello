@@ -8,7 +8,7 @@ from love_push.models import Location, Recipient, WeatherSnapshot
 class ComposeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.recipient = Recipient(
-            "her", "宝贝", "openid", Location("清华园 · 北京", 40, 116.3), "想你 💗"
+            "her", "宝贝", "openid", Location("清华园 · 北京", 40, 116.3), "想你 <3"
         )
         self.weather = WeatherSnapshot(1, 26.3, 27.1, 71, 8.2, 23.4, 31.2, 20, 7.1)
         self.now = datetime(2026, 7, 15, 8, 5)
@@ -43,7 +43,11 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("天气暂时走丢了", preview)
         self.assertIn("想你", preview)
 
+    def test_template_values_do_not_contain_four_byte_emoji(self) -> None:
+        message = compose_message(self.recipient, self.weather, "morning", self.now)
+        values = [field["value"] for field in message.fields.values()]
+        self.assertFalse(any(ord(char) > 0xFFFF for value in values for char in value))
+
 
 if __name__ == "__main__":
     unittest.main()
-

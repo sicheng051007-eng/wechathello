@@ -71,7 +71,7 @@ def load_recipients(
                     timezone=str(location_data.get("timezone", "Asia/Shanghai")).strip()
                     or "Asia/Shanghai",
                 ),
-                signoff=str(item.get("signoff", "隔着山海，也一直惦记你 💗")).strip(),
+                signoff=str(item.get("signoff", "隔着山海，也一直惦记你 <3")).strip(),
             )
         )
 
@@ -113,4 +113,3 @@ def _number(data: dict[object, object], key: str, index: int) -> float:
     if not math.isfinite(number):
         raise ConfigurationError(f"recipients[{index}].location.{key} 必须是有限数字")
     return number
-
