@@ -1,6 +1,6 @@
 # 清浙小报 💗
 
-给异地恋人的微信天气与鼓励定时推送。默认在**北京时间每天 08:05 和 18:05**发送一张精简微信卡片；点击卡片可以查看完整天气、气温、活动建议和温柔鼓励。
+给异地恋人的微信天气与鼓励定时推送。默认尽量在**北京时间每天 08:00 和 18:00**发送一张精简微信卡片；点击卡片可以查看完整天气、气温、活动建议和温柔鼓励。
 
 项目已预置两个地点：
 
@@ -28,7 +28,7 @@
 
 调研过的早期热门方案（例如 [EverydayWechat](https://github.com/sfyc23/EverydayWechat)）大多依赖 ItChat 和网页版微信；项目说明也明确指出，账号不能登录网页版微信时就无法使用。清浙小报改用微信公众号测试号的模板消息接口，不模拟个人微信登录，适合无人值守运行。
 
-天气来自 [Open-Meteo Forecast API](https://open-meteo.com/en/docs)，个人非商业低频使用无需 API Key。定时任务使用 [GitHub Actions 的时区感知 schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)。GitHub 官方提示每小时整点更容易发生排队，因此默认放在 08:05 和 18:05。
+天气来自 [Open-Meteo Forecast API](https://open-meteo.com/en/docs)，个人非商业低频使用无需 API Key。定时任务使用 [GitHub Actions 的时区感知 schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)。GitHub 官方提示每小时整点更容易发生排队，因此工作流会在 07:55 和 17:55 提前准备内容，并等到 08:00 和 18:00 再发送；如果首次任务漏触发或发送失败，当小时内还会自动补偿重试。
 
 ## 部署：约 10 分钟
 
@@ -95,13 +95,13 @@
 完成一次手动测试后无需再操作。工作流会按北京时间自动运行：
 
 ```yaml
-- cron: "5 8 * * *"    # 08:05
-  timezone: "Asia/Shanghai"
-- cron: "5 18 * * *"   # 18:05
-  timezone: "Asia/Shanghai"
+- cron: "55 7 * * *"             # 07:55 准备，等待到 08:00 发送
+- cron: "12,27,42,57 8 * * *"    # 早间自动补偿重试
+- cron: "55 17 * * *"            # 17:55 准备，等待到 18:00 发送
+- cron: "12,27,42,57 18 * * *"   # 晚间自动补偿重试
 ```
 
-如一定要整点发送，可把 [`daily-push.yml`](.github/workflows/daily-push.yml) 中的两个 `5` 改为 `0`，同时更新工作流“判断早晚时段”步骤里的匹配文本。GitHub 定时任务是 best effort，平台繁忙时可能有几分钟延迟；默认避开整点可降低延迟或任务被丢弃的概率。
+每位收件人、每天、每个时段都有独立的成功标记。首次发送成功后，后续补偿任务会自动跳过该收件人；如果只有一人发送失败，也只会重试失败的人，不会让另一人重复收到消息。GitHub 定时任务仍属于 best effort，因此无法承诺精确到秒，但提前准备可以让正常情况下的发送时间尽量接近整点，多次补偿则显著降低整次漏发的概率。
 
 ## 个性化
 
@@ -138,6 +138,7 @@ python -m unittest discover -s tests -v
 
 - 天气接口会自动重试；如果当天接口仍不可用，项目会继续发送问候和鼓励，并显示温和的天气降级文案。
 - 一个收件人发送失败，不会阻止另一个收件人的消息；任务最后会标红，方便从 Actions 日志排查。
+- 定时任务在当小时内自动补偿重试，并按收件人保存成功标记，避免重试导致重复推送。
 - 同一地点只请求一次天气，避免不必要的 API 调用。
 - 微信 appsecret、OpenID 和模板 ID 不进入仓库、不打印到日志。
 - 详情页地址使用不可读的散列路径，页面声明禁止搜索引擎收录，且绝不会写入 OpenID；但免费 GitHub Pages 本质上仍是公开网页，不要在文案中放身份证号、电话等敏感信息。

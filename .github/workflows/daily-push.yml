@@ -2,9 +2,15 @@ name: 每日微信推送
 
 on:
   schedule:
-    - cron: "5 8 * * *"
+    # 07:55 先准备内容，发送步骤会等到 08:00；后续时刻用于自动补偿漏触发或发送失败。
+    - cron: "55 7 * * *"
       timezone: "Asia/Shanghai"
-    - cron: "5 18 * * *"
+    - cron: "12,27,42,57 8 * * *"
+      timezone: "Asia/Shanghai"
+    # 晚间同理：17:55 提前准备，尽量在 18:00 准时发送。
+    - cron: "55 17 * * *"
+      timezone: "Asia/Shanghai"
+    - cron: "12,27,42,57 18 * * *"
       timezone: "Asia/Shanghai"
   workflow_dispatch:
     inputs:
@@ -60,10 +66,15 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "value=${{ inputs.period }}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event.schedule }}" == "5 8 * * *" ]]; then
-            echo "value=morning" >> "$GITHUB_OUTPUT"
           else
-            echo "value=evening" >> "$GITHUB_OUTPUT"
+            case "${{ github.event.schedule }}" in
+              "55 7 * * *"|"12,27,42,57 8 * * *")
+                echo "value=morning" >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "value=evening" >> "$GITHUB_OUTPUT"
+                ;;
+            esac
           fi
 
       - name: 预览消息
@@ -107,7 +118,10 @@ jobs:
       - prepare
       - deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
+    env:
+      HAS_GIRLFRIEND: ${{ secrets.WECHAT_OPENID_GIRLFRIEND != '' }}
+      HAS_BOYFRIEND: ${{ secrets.WECHAT_OPENID_BOYFRIEND != '' }}
     steps:
       - name: 获取代码
         uses: actions/checkout@v6
@@ -117,14 +131,133 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 发送精简卡片
+      - name: 生成本次发送标识
+        id: batch
+        shell: bash
+        run: |
+          echo "date=$(TZ=Asia/Shanghai date +%F)" >> "$GITHUB_OUTPUT"
+          if [[ "${{ needs.prepare.outputs.period }}" == "morning" ]]; then
+            echo "target_hour=08" >> "$GITHUB_OUTPUT"
+          else
+            echo "target_hour=18" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 检查女朋友是否已收到
+        id: girlfriend-cache
+        if: github.event_name == 'schedule' && env.HAS_GIRLFRIEND == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: .send-markers/girlfriend
+          key: >-
+            wechat-send-v1-${{ steps.batch.outputs.date }}-${{
+            needs.prepare.outputs.period }}-girlfriend
+
+      - name: 检查自己是否已收到
+        id: boyfriend-cache
+        if: github.event_name == 'schedule' && env.HAS_BOYFRIEND == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: .send-markers/boyfriend
+          key: >-
+            wechat-send-v1-${{ steps.batch.outputs.date }}-${{
+            needs.prepare.outputs.period }}-boyfriend
+
+      - name: 等待到目标整点
+        if: github.event_name == 'schedule'
+        shell: bash
+        run: |
+          now_epoch=$(date +%s)
+          target_epoch=$(TZ=Asia/Shanghai date -d \
+            "${{ steps.batch.outputs.date }} ${{ steps.batch.outputs.target_hour }}:00:00" +%s)
+          wait_seconds=$((target_epoch - now_epoch))
+          if (( wait_seconds > 0 )); then
+            echo "内容已准备完成，等待 ${wait_seconds} 秒后发送"
+            sleep "$wait_seconds"
+          fi
+
+      - name: 给女朋友发送精简卡片
+        id: send-girlfriend
+        if: >-
+          env.HAS_GIRLFRIEND == 'true' &&
+          (github.event_name != 'schedule' ||
+          steps.girlfriend-cache.outputs.cache-hit != 'true')
+        continue-on-error: true
         env:
           WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
           WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
           WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
           WECHAT_OPENID_GIRLFRIEND: ${{ secrets.WECHAT_OPENID_GIRLFRIEND }}
+          WECHAT_OPENID_BOYFRIEND: ""
+        run: >-
+          python -m love_push
+          --period "${{ needs.prepare.outputs.period }}"
+          --page-base-url "${{ needs.deploy.outputs.page_url }}"
+
+      - name: 记录女朋友发送成功
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.send-girlfriend.outcome == 'success'
+        shell: bash
+        run: |
+          mkdir -p .send-markers/girlfriend
+          date --iso-8601=seconds > .send-markers/girlfriend/sent-at.txt
+
+      - name: 保存女朋友发送标记
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.send-girlfriend.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: .send-markers/girlfriend
+          key: ${{ steps.girlfriend-cache.outputs.cache-primary-key }}
+
+      - name: 给自己发送精简卡片
+        id: send-boyfriend
+        if: >-
+          env.HAS_BOYFRIEND == 'true' &&
+          (github.event_name != 'schedule' ||
+          steps.boyfriend-cache.outputs.cache-hit != 'true')
+        continue-on-error: true
+        env:
+          WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
+          WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
+          WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
+          WECHAT_OPENID_GIRLFRIEND: ""
           WECHAT_OPENID_BOYFRIEND: ${{ secrets.WECHAT_OPENID_BOYFRIEND }}
         run: >-
           python -m love_push
           --period "${{ needs.prepare.outputs.period }}"
           --page-base-url "${{ needs.deploy.outputs.page_url }}"
+
+      - name: 记录自己发送成功
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.send-boyfriend.outcome == 'success'
+        shell: bash
+        run: |
+          mkdir -p .send-markers/boyfriend
+          date --iso-8601=seconds > .send-markers/boyfriend/sent-at.txt
+
+      - name: 保存自己发送标记
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.send-boyfriend.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: .send-markers/boyfriend
+          key: ${{ steps.boyfriend-cache.outputs.cache-primary-key }}
+
+      - name: 汇总发送结果
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [[ "$HAS_GIRLFRIEND" != "true" && "$HAS_BOYFRIEND" != "true" ]]; then
+            echo "没有配置任何收件人的 OpenID"
+            exit 1
+          fi
+          if [[ "${{ steps.send-girlfriend.outcome }}" == "failure" || \
+                "${{ steps.send-boyfriend.outcome }}" == "failure" ]]; then
+            echo "至少一位收件人发送失败，后续定时任务会自动重试"
+            exit 1
+          fi
+          echo "所有已配置的收件人均已发送，或此前已经发送成功"
