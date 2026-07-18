@@ -3,6 +3,7 @@ import unittest
 from contextlib import redirect_stdout
 from datetime import datetime
 
+from love_push.details import detail_page_path
 from love_push.models import Location, Recipient, WeatherSnapshot
 from love_push.service import run_push
 
@@ -75,6 +76,43 @@ class ServiceTests(unittest.TestCase):
         self.assertIsNotNone(wechat.message)
         self.assertTrue(wechat.message.url.startswith("https://example.com/wechathello/message-"))
         self.assertLessEqual(len(wechat.message.fields["encouragement"]["value"]), 18)
+
+    def test_period_care_uses_its_own_page_and_personal_words(self) -> None:
+        recipient = Recipient(
+            "her",
+            "宝贝",
+            "openid",
+            Location("清华园", 40, 116.3),
+            "来自浙大的牵挂 💗",
+        )
+        wechat = FakeWeChat()
+        summary = run_push(
+            [recipient],
+            "morning",
+            datetime(2026, 7, 15, 8, 5),
+            FineWeather(),
+            wechat_client=wechat,
+            template_id="template",
+            page_base_url="https://example.com/wechathello/",
+            message_kind="period-care",
+            care_style="很难受想休息",
+            extra_words="乖乖休息，晚点给你打电话",
+        )
+        self.assertEqual(summary.sent, 1)
+        self.assertIsNotNone(wechat.message)
+        self.assertNotEqual(
+            wechat.message.url,
+            "https://example.com/wechathello/"
+            + detail_page_path("her"),
+        )
+        self.assertEqual(
+            wechat.message.url,
+            "https://example.com/wechathello/"
+            + detail_page_path("her", "period-care"),
+        )
+        self.assertTrue(
+            wechat.message.fields["encouragement"]["value"].startswith("乖乖休息")
+        )
 
 
 if __name__ == "__main__":

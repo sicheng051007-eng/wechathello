@@ -2,10 +2,14 @@ import unittest
 from datetime import datetime
 
 from love_push.compose import (
+    CARE_ACTIVITIES,
+    CARE_STYLES,
+    CARE_WORDS,
     EVENING_WORDS,
     MORNING_WORDS,
     compose_card_summary,
     compose_message,
+    compose_period_care_message,
     render_preview,
 )
 from love_push.models import Location, Recipient, WeatherSnapshot
@@ -84,6 +88,53 @@ class ComposeTests(unittest.TestCase):
         self.assertLessEqual(len(summary.fields["encouragement"]["value"]), 18)
         self.assertLessEqual(len(summary.fields["closing"]["value"]), 16)
         self.assertNotIn("…", "".join(item["value"] for item in summary.fields.values()))
+
+    def test_period_care_has_three_styles_and_varied_words(self) -> None:
+        self.assertEqual(
+            CARE_STYLES,
+            ("温柔关心", "有些不舒服", "很难受想休息"),
+        )
+        for style in CARE_STYLES:
+            self.assertGreaterEqual(len(CARE_ACTIVITIES[style]), 6)
+            self.assertGreaterEqual(len(CARE_WORDS[style]), 6)
+
+    def test_period_care_prioritizes_personal_words_in_card(self) -> None:
+        full = compose_period_care_message(
+            self.recipient,
+            self.weather,
+            "有些不舒服",
+            self.now,
+            "  今天下课后给我打电话，我想陪陪你！  ",
+        )
+        self.assertIn(
+            "今天下课后给我打电话，我想陪陪你",
+            full.fields["encouragement"]["value"],
+        )
+        summary = compose_card_summary(
+            self.recipient,
+            self.weather,
+            "morning",
+            full,
+            "https://example.com/care/",
+            "period-care",
+        )
+        self.assertEqual(
+            summary.fields["greeting"]["value"],
+            "宝贝，今天慢一点，我一直都在 💗",
+        )
+        self.assertTrue(
+            summary.fields["encouragement"]["value"].startswith("今天下课后")
+        )
+        self.assertLessEqual(len(summary.fields["encouragement"]["value"]), 18)
+
+    def test_period_care_rejects_unknown_style(self) -> None:
+        with self.assertRaises(ValueError):
+            compose_period_care_message(
+                self.recipient,
+                self.weather,
+                "未知状态",
+                self.now,
+            )
 
 
 if __name__ == "__main__":

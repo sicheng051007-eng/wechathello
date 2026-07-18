@@ -103,6 +103,23 @@
 
 每位收件人、每天、每个时段都有独立的成功标记。首次发送成功后，后续补偿任务会自动跳过该收件人；如果只有一人发送失败，也只会重试失败的人，不会让另一人重复收到消息。GitHub 定时任务仍属于 best effort，因此无法承诺精确到秒，但提前准备可以让正常情况下的发送时间尽量接近整点，多次补偿则显著降低整次漏发的概率。
 
+## 主动发送生理期关心
+
+这个功能不会记录生理期日期，也不会自动猜测周期。需要关心她时，你可以随时主动发送：
+
+1. 打开仓库的 `Actions` 页面；
+2. 左侧选择“主动发送生理期关心”；
+3. 点击 `Run workflow`；
+4. 按她当天的状态选择“温柔关心”“有些不舒服”或“很难受想休息”；
+5. 可以在 `extra_words` 临时写一句自己的话，例如“下课后给我打电话，我想陪陪你”；
+6. `dry_run` 保持 `false`，点击绿色按钮运行。
+
+这条消息**只会发给女朋友**，不会发给你自己，也不会影响每天 08:00 和 18:00 的推送。微信首屏是一张简洁的粉色关怀卡片，点击后会看到专属爱心信笺页，包含她当地的天气、温度、适合怎样照顾自己，以及根据状态轮换的关心话语。
+
+`extra_words` 会随消息显示在 GitHub Pages 详情页；页面路径虽然不可读且禁止搜索引擎收录，但免费 Pages 仍属于公开网页，请不要填写姓名、电话、健康记录等隐私信息。若只想查看文字效果而不发送，把 `dry_run` 改成 `true`，内容会显示在 Actions 日志中。
+
+关怀建议保持克制：热敷、休息、轻缓活动等参考了 [ACOG 的痛经健康说明](https://www.acog.org/womens-health/faqs/dysmenorrhea-painful-periods)；如果疼痛明显影响上课或日常活动，页面会提醒及时寻求专业帮助。该功能只传达关心，不记录健康数据，也不替代医疗建议。
+
 ## 个性化
 
 编辑 [`config/recipients.json`](config/recipients.json) 可以修改：
@@ -124,6 +141,9 @@
 # 获取两地真实天气并预览，不发送微信
 python -m love_push --period morning --dry-run
 python -m love_push --period evening --dry-run
+
+# 只给女朋友预览一条生理期关心消息
+python -m love_push --message-kind period-care --care-style "有些不舒服" --recipient-id girlfriend --dry-run
 
 # 预览精简卡片（示例地址只用于预览）
 python -m love_push --period morning --dry-run --page-base-url https://example.com/
@@ -173,6 +193,7 @@ python -m unittest discover -s tests -v
 .
 ├── .github/workflows/
 │   ├── daily-push.yml       # 每日定时与手动推送
+│   ├── period-care.yml      # 主动发送生理期关心
 │   └── ci.yml               # 提交时运行测试
 ├── config/recipients.json   # 称呼、校园坐标、落款
 ├── love_push/

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from love_push.config import (
     load_recipients,
     load_wechat_credentials,
 )
+from love_push.compose import CARE_STYLES
 from love_push.service import run_push
 from love_push.weather import OpenMeteoWeather
 from love_push.wechat import WeChatClient
@@ -27,6 +29,27 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("auto", "morning", "evening"),
         default="auto",
         help="消息时段；auto 按北京时间判断",
+    )
+    parser.add_argument(
+        "--message-kind",
+        choices=("daily", "period-care"),
+        default="daily",
+        help="消息类型；period-care 为主动生理期关心",
+    )
+    parser.add_argument(
+        "--care-style",
+        choices=CARE_STYLES,
+        default="温柔关心",
+        help="生理期关心的表达强度",
+    )
+    parser.add_argument(
+        "--recipient-id",
+        help="只处理指定收件人，例如 girlfriend",
+    )
+    parser.add_argument(
+        "--extra-words",
+        default="",
+        help="生理期关心中想亲自补充的一句话",
     )
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="收件人 JSON 配置")
     parser.add_argument(
@@ -71,6 +94,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         if skipped:
             logging.info("未配置 OpenID，已跳过：%s", ", ".join(skipped))
+        if args.recipient_id:
+            recipients = [
+                recipient
+                for recipient in recipients
+                if recipient.id == args.recipient_id
+            ]
+            if not recipients:
+                raise ConfigurationError(
+                    f"找不到可处理的收件人：{args.recipient_id}"
+                )
 
         wechat_client = None
         template_id = ""
@@ -89,6 +122,12 @@ def main(argv: list[str] | None = None) -> int:
             preview=not args.site_only,
             site_dir=args.site_dir,
             page_base_url=args.page_base_url,
+            message_kind=args.message_kind,
+            care_style=args.care_style,
+            extra_words=(
+                args.extra_words
+                or os.getenv("PERIOD_CARE_EXTRA_WORDS", "")
+            ),
         )
     except (ConfigurationError, ValueError) as exc:
         logging.error("配置错误：%s", exc)

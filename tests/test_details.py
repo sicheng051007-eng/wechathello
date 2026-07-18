@@ -49,6 +49,26 @@ class DetailPageTests(unittest.TestCase):
             self.assertNotIn("secret-openid", page)
             self.assertIn('name="robots" content="noindex,nofollow,noarchive"', page)
 
+    def test_period_care_has_distinct_path_and_loving_layout(self) -> None:
+        daily_path = detail_page_path(self.recipient.id)
+        care_path = detail_page_path(self.recipient.id, "period-care")
+        self.assertNotEqual(daily_path, care_path)
+        self.assertNotIn(self.recipient.id, care_path)
+
+        with tempfile.TemporaryDirectory() as directory:
+            write_detail_site(
+                directory,
+                [(self.recipient, self.message)],
+                page_kind="period-care",
+            )
+            page = (Path(directory) / care_path / "index.html").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("今天不用逞强，你只需要被好好爱着", page)
+            self.assertIn("把我的拥抱放在这里", page)
+            self.assertIn("不用急着回复，舒服一点更重要", page)
+            self.assertNotIn("secret-openid", page)
+
 
 if __name__ == "__main__":
     unittest.main()

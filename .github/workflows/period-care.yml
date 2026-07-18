@@ -1,0 +1,131 @@
+name: 主动发送生理期关心
+
+on:
+  workflow_dispatch:
+    inputs:
+      care_style:
+        description: 她今天的状态
+        required: true
+        default: 温柔关心
+        type: choice
+        options:
+          - 温柔关心
+          - 有些不舒服
+          - 很难受想休息
+      extra_words:
+        description: 想亲自说的话（可选；会显示在公开详情页，请勿填隐私）
+        required: false
+        type: string
+      dry_run:
+        description: 只在日志预览，不部署网页也不发送微信
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: qingzhe-pages-push
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 获取代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: 运行单元测试
+        run: python -m unittest discover -s tests -v
+
+      - name: 预览关心消息
+        if: inputs.dry_run
+        env:
+          PERIOD_CARE_EXTRA_WORDS: ${{ inputs.extra_words }}
+        run: >-
+          python -m love_push
+          --message-kind period-care
+          --care-style "${{ inputs.care_style }}"
+          --recipient-id girlfriend
+          --dry-run
+
+      - name: 配置 GitHub Pages
+        if: ${{ !inputs.dry_run }}
+        uses: actions/configure-pages@v5
+
+      - name: 保留每日消息详情页
+        if: ${{ !inputs.dry_run }}
+        run: python -m love_push --period auto --site-only --site-dir site
+
+      - name: 生成爱心关怀详情页
+        if: ${{ !inputs.dry_run }}
+        env:
+          PERIOD_CARE_EXTRA_WORDS: ${{ inputs.extra_words }}
+        run: >-
+          python -m love_push
+          --message-kind period-care
+          --care-style "${{ inputs.care_style }}"
+          --recipient-id girlfriend
+          --site-only
+          --site-dir site
+
+      - name: 上传完整内容页
+        if: ${{ !inputs.dry_run }}
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    if: ${{ !inputs.dry_run }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署爱心关怀详情页
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  send:
+    if: ${{ !inputs.dry_run }}
+    needs:
+      - prepare
+      - deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 获取代码
+        uses: actions/checkout@v6
+
+      - name: 配置 Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: 只给女朋友发送爱心关怀卡片
+        env:
+          WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
+          WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
+          WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
+          WECHAT_OPENID_GIRLFRIEND: ${{ secrets.WECHAT_OPENID_GIRLFRIEND }}
+          WECHAT_OPENID_BOYFRIEND: ""
+          PERIOD_CARE_EXTRA_WORDS: ${{ inputs.extra_words }}
+        run: >-
+          python -m love_push
+          --message-kind period-care
+          --care-style "${{ inputs.care_style }}"
+          --recipient-id girlfriend
+          --page-base-url "${{ needs.deploy.outputs.page_url }}"

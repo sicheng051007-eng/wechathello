@@ -74,6 +74,68 @@ EVENING_WORDS = (
     "晚安之前再说一遍：你很重要，被爱着，也一直有人惦记。",
 )
 
+CARE_STYLES = ("温柔关心", "有些不舒服", "很难受想休息")
+
+CARE_GREETINGS = {
+    "温柔关心": "宝贝，这几天更要好好疼爱自己 🌷",
+    "有些不舒服": "宝贝，今天慢一点，我一直都在 💗",
+    "很难受想休息": "宝贝，难受就先休息，我一直都在 💗",
+}
+
+CARE_ACTIVITIES = {
+    "温柔关心": (
+        "今天适合把节奏调慢一点，喝点温热的东西，也给自己多一点休息 🌷",
+        "想吃什么就选让身体舒服的，课间坐一会儿，晚上也早点休息 💗",
+        "可以散一小会儿步、听喜欢的歌，今天的安排都以舒服为先 🌷",
+        "记得带好需要的用品，穿得暖暖的，给自己留一点不被打扰的时间 💗",
+        "今天适合热乎的饭、柔软的毯子和轻松的电影，其他事都慢慢来 🌷",
+        "忙碌之间多停一停，喝水、伸展、深呼吸，把温柔也分给自己一些 💗",
+    ),
+    "有些不舒服": (
+        "不舒服就先停一停，可以热敷一会儿、少站太久，今天不用逼自己满分 💗",
+        "适合吃点热乎清淡的东西，腰腹注意保暖，能休息时就歇一歇 🌷",
+        "今天少安排剧烈运动，找个舒服的位置坐坐，难受时随时告诉我 💗",
+        "可以洗个温热的澡、早点躺下，课业和消息都不必急着马上处理 🌷",
+        "把必须做的事缩到最少，剩下的时间用来热敷、休息和照顾自己 💗",
+        "如果还要出门，记得放慢脚步、带好用品，回来就让自己好好歇着 🌷",
+    ),
+    "很难受想休息": (
+        "今天最重要的任务是好好休息，其他事情能缓就缓，我永远站在你这边 💗",
+        "难受就联系我，不要一个人硬撑；身体明显不适时记得及时找校医院帮忙 🌷",
+        "先躺下来休息一会儿，热敷、温水和安静的陪伴都已经替你准备好啦 💗",
+        "今天可以暂时不做那个无所不能的你，只要好好吃饭、休息和照顾自己 🌷",
+        "如果疼痛影响上课或日常活动，就请及时向老师、同学或校医院求助 💗",
+        "把计划先按下暂停键吧，舒服一点比完成清单更重要，我会一直陪着你 🌷",
+    ),
+}
+
+CARE_WORDS = {
+    "温柔关心": (
+        "生理期不是需要你独自熬过去的几天，它只是提醒我，要比平时再多爱你一点。",
+        "隔着一段路，我没法立刻递上热水，但每一句关心都在认真抱抱你。",
+        "今天不用把所有事情都做好，你照顾好自己，就是我最想收到的好消息。",
+        "希望这条消息像一条软软的毯子，把我的想念和温度一起盖在你身上。",
+        "你可以照常闪闪发光，也可以暂时做一朵慢慢休息的小云，我都一样喜欢。",
+        "想把今天所有温柔都打包寄给你：一份安心，一份惦记，还有很多很多喜欢。",
+    ),
+    "有些不舒服": (
+        "难受的时候不用表现得和平时一样有力气，在我这里，你永远可以放心说累。",
+        "我不能替你分走疼痛，但我愿意一直听你说，也一直站在你需要我的地方。",
+        "今天的你不需要满分，只需要被好好照顾；剩下的事情，我们以后慢慢完成。",
+        "如果身体在闹小脾气，就先哄哄它吧。你休息的时候，我会替你守着这份安心。",
+        "不舒服可以告诉我，想安静也可以告诉我；怎样让你好受一点，就怎样来。",
+        "真想现在就给你一个暖暖的拥抱，再认真告诉你：别怕，我一直都在。",
+    ),
+    "很难受想休息": (
+        "今天不用坚强，也不用怕打扰我。你的一句难受，永远值得我认真回应。",
+        "先把世界调成静音，好好休息。没完成的事情不会跑，我也不会离开。",
+        "如果可以，我想把你的疼痛轻轻拿走，再把安心、睡意和拥抱都留给你。",
+        "你不需要一个人扛过去，随时给我打电话；隔着距离，我也会认真陪着你。",
+        "今天只做一件事就好：把自己放在第一位。你舒服一点，我才能放心一点。",
+        "我最在意的从来不是你今天做了多少，而是你有没有被温柔照顾、平安休息。",
+    ),
+}
+
 WEEKDAYS = "一二三四五六日"
 
 
@@ -95,19 +157,10 @@ def compose_message(
     words = MORNING_WORDS if period == "morning" else EVENING_WORDS
     encouragement = _daily_choice(words, now, recipient.id, period)
 
+    weather_line, temperature_line = _weather_lines(weather)
     if weather is None:
-        weather_line = "天气暂时走丢了，但关心没有掉线 🛰️"
-        temperature_line = "气温数据稍后再来，请按体感及时增减衣物"
         activity_line = "适合照顾好自己，也适合随时给我发消息 💗"
     else:
-        weather_line = (
-            f"{weather_text(weather.weather_code)}｜降雨 {weather.precipitation_probability}%"
-            f"｜湿度 {weather.humidity}%"
-        )
-        temperature_line = (
-            f"现在 {weather.current_temperature:.1f}℃（体感 {weather.apparent_temperature:.1f}℃）"
-            f"｜今日 {weather.temperature_min:.0f}～{weather.temperature_max:.0f}℃"
-        )
         activity_line = _daily_choice(
             activity_suggestions(weather, period),
             now,
@@ -126,6 +179,51 @@ def compose_message(
             "encouragement": _field(encouragement, "#C41D7F"),
             "closing": _field(recipient.signoff, "#722ED1"),
             "source": _field("天气数据：Open-Meteo", "#BFBFBF"),
+        }
+    )
+
+
+def compose_period_care_message(
+    recipient: Recipient,
+    weather: WeatherSnapshot | None,
+    care_style: str,
+    now: datetime,
+    extra_words: str = "",
+) -> TemplateMessage:
+    if care_style not in CARE_STYLES:
+        raise ValueError("care_style 必须是：" + "、".join(CARE_STYLES))
+
+    weather_line, temperature_line = _weather_lines(weather)
+    activity = _daily_choice(
+        CARE_ACTIVITIES[care_style],
+        now,
+        recipient.id,
+        f"period-care|{care_style}|activity",
+    )
+    encouragement = _daily_choice(
+        CARE_WORDS[care_style],
+        now,
+        recipient.id,
+        f"period-care|{care_style}|words",
+    )
+    personal_words = re.sub(r"\s+", " ", extra_words).strip()[:120]
+    if personal_words:
+        encouragement = f"{personal_words.rstrip('。！？')}。{encouragement}"
+
+    return TemplateMessage(
+        fields={
+            "greeting": _field(CARE_GREETINGS[care_style], "#E94B78"),
+            "date": _field(
+                f"{now:%Y年%m月%d日} · 星期{WEEKDAYS[now.weekday()]}",
+                "#8C6A76",
+            ),
+            "location": _field(recipient.location.name, "#A45A82"),
+            "weather": _field(weather_line, "#C76B37"),
+            "temperature": _field(temperature_line, "#D65B72"),
+            "activity": _field(activity, "#9A5B76"),
+            "encouragement": _field(encouragement, "#C41D7F"),
+            "closing": _field(recipient.signoff, "#8B3A62"),
+            "source": _field("天气数据：Open-Meteo", "#B49BA5"),
         }
     )
 
@@ -155,20 +253,26 @@ def compose_card_summary(
     period: str,
     full_message: TemplateMessage,
     url: str,
+    message_kind: str = "daily",
 ) -> TemplateMessage:
     """生成适合微信卡片首屏展示的短摘要，完整内容保留在详情页。"""
     fields = {
         name: dict(item)
         for name, item in full_message.fields.items()
     }
-    fields["greeting"]["value"] = _short_text(
-        (
-            f"早安，{recipient.name} ☀️"
-            if period == "morning"
-            else f"晚安，{recipient.name} 🌙"
-        ),
-        16,
-    )
+    if message_kind == "period-care":
+        fields["greeting"]["value"] = _short_text(
+            full_message.fields["greeting"]["value"], 18
+        )
+    else:
+        fields["greeting"]["value"] = _short_text(
+            (
+                f"早安，{recipient.name} ☀️"
+                if period == "morning"
+                else f"晚安，{recipient.name} 🌙"
+            ),
+            16,
+        )
     fields["date"]["value"] = re.sub(
         r"^\d{4}年(\d{2}月\d{2}日) · 星期(.)$",
         r"\1 周\2",
@@ -209,6 +313,20 @@ def _daily_choice(words: tuple[str, ...], now: datetime, recipient_id: str, peri
 
 def _field(value: str, color: str) -> dict[str, str]:
     return {"value": value, "color": color}
+
+
+def _weather_lines(weather: WeatherSnapshot | None) -> tuple[str, str]:
+    if weather is None:
+        return (
+            "天气暂时走丢了，但关心没有掉线 🛰️",
+            "气温数据稍后再来，请按体感及时增减衣物",
+        )
+    return (
+        f"{weather_text(weather.weather_code)}｜降雨 {weather.precipitation_probability}%"
+        f"｜湿度 {weather.humidity}%",
+        f"现在 {weather.current_temperature:.1f}℃（体感 {weather.apparent_temperature:.1f}℃）"
+        f"｜今日 {weather.temperature_min:.0f}～{weather.temperature_max:.0f}℃",
+    )
 
 
 def _first_clause(value: str, max_length: int) -> str:

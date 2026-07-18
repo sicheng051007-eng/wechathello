@@ -8,6 +8,7 @@ WORKFLOW = (
     / "workflows"
     / "daily-push.yml"
 )
+PERIOD_CARE_WORKFLOW = WORKFLOW.with_name("period-care.yml")
 
 
 class DailyPushWorkflowTests(unittest.TestCase):
@@ -32,6 +33,27 @@ class DailyPushWorkflowTests(unittest.TestCase):
         self.assertIn("period }}-boyfriend", self.workflow)
         self.assertIn("steps.send-girlfriend.outcome == 'success'", self.workflow)
         self.assertIn("steps.send-boyfriend.outcome == 'success'", self.workflow)
+
+    def test_daily_deployment_preserves_period_care_page(self) -> None:
+        self.assertIn("保留爱心关怀详情页", self.workflow)
+        self.assertIn("--message-kind period-care", self.workflow)
+
+
+class PeriodCareWorkflowTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.workflow = PERIOD_CARE_WORKFLOW.read_text(encoding="utf-8")
+
+    def test_is_manual_only_and_offers_three_care_styles(self) -> None:
+        self.assertIn("workflow_dispatch:", self.workflow)
+        self.assertNotIn("schedule:", self.workflow)
+        for style in ("温柔关心", "有些不舒服", "很难受想休息"):
+            self.assertIn(f"- {style}", self.workflow)
+
+    def test_only_sends_to_girlfriend(self) -> None:
+        self.assertIn("--recipient-id girlfriend", self.workflow)
+        self.assertIn('WECHAT_OPENID_BOYFRIEND: ""', self.workflow)
+        self.assertNotIn("给自己发送", self.workflow)
+        self.assertIn("--message-kind period-care", self.workflow)
 
 
 if __name__ == "__main__":

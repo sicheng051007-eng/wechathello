@@ -5,7 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from love_push.compose import compose_card_summary, compose_message, render_preview
+from love_push.compose import (
+    compose_card_summary,
+    compose_message,
+    compose_period_care_message,
+    render_preview,
+)
 from love_push.details import detail_page_url, write_detail_site
 from love_push.models import Recipient, TemplateMessage, WeatherSnapshot
 from love_push.weather import OpenMeteoWeather
@@ -34,7 +39,13 @@ def run_push(
     preview: bool = True,
     site_dir: str | Path | None = None,
     page_base_url: str = "",
+    message_kind: str = "daily",
+    care_style: str = "温柔关心",
+    extra_words: str = "",
 ) -> PushSummary:
+    if message_kind not in {"daily", "period-care"}:
+        raise ValueError("message_kind 必须是 daily 或 period-care")
+
     token = ""
     if not dry_run:
         if wechat_client is None or not template_id:
@@ -59,7 +70,16 @@ def run_push(
         weather = weather_cache[cache_key]
         if weather is None:
             degraded += 1
-        message = compose_message(recipient, weather, period, now)
+        if message_kind == "period-care":
+            message = compose_period_care_message(
+                recipient,
+                weather,
+                care_style,
+                now,
+                extra_words,
+            )
+        else:
+            message = compose_message(recipient, weather, period, now)
         detail_pages.append((recipient, message))
 
         if dry_run:
@@ -71,7 +91,8 @@ def run_push(
                         weather,
                         period,
                         message,
-                        detail_page_url(page_base_url, recipient.id),
+                        detail_page_url(page_base_url, recipient.id, message_kind),
+                        message_kind,
                     )
                 print(f"\n===== {recipient.id} / {recipient.name} =====")
                 print(render_preview(preview_message))
@@ -87,7 +108,8 @@ def run_push(
                     weather,
                     period,
                     message,
-                    detail_page_url(page_base_url, recipient.id),
+                    detail_page_url(page_base_url, recipient.id, message_kind),
+                    message_kind,
                 )
             msgid = wechat_client.send_template(
                 token, recipient.openid, template_id, send_message
@@ -100,7 +122,7 @@ def run_push(
             failed += 1
 
     if site_dir is not None:
-        write_detail_site(site_dir, detail_pages)
+        write_detail_site(site_dir, detail_pages, page_kind=message_kind)
         LOGGER.info("完整内容页已生成到 %s", site_dir)
 
     return PushSummary(sent=sent, failed=failed, degraded_weather=degraded)
